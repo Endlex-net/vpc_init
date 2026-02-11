@@ -23,11 +23,11 @@ verify_execute() {
             print_success "操作系统: Ubuntu $VERSION_ID"
         else
             print_warning "操作系统: $NAME (非 Ubuntu)"
-            ((warnings++))
+            warnings=$((warnings+1))
         fi
     else
         print_error "无法识别操作系统"
-        ((errors++))
+        errors=$((errors+1))
     fi
     
     # 检查权限
@@ -37,7 +37,7 @@ verify_execute() {
         print_success "权限: root"
     else
         print_error "权限: 非 root (需要 root 权限)"
-        ((errors++))
+        errors=$((errors+1))
     fi
     
     # 检查网络
@@ -47,7 +47,7 @@ verify_execute() {
         print_success "网络连接: 正常"
     else
         print_warning "网络连接: 可能有问题"
-        ((warnings++))
+        warnings=$((warnings+1))
     fi
     
     # 检查磁盘空间
@@ -58,7 +58,7 @@ verify_execute() {
         print_success "磁盘空间: 充足 ($(($available/1024))MB)"
     else
         print_warning "磁盘空间: 不足 ($(($available/1024))MB)"
-        ((warnings++))
+        warnings=$((warnings+1))
     fi
     
     # 检查内存
@@ -69,7 +69,7 @@ verify_execute() {
         print_success "内存: ${mem}MB"
     else
         print_warning "内存: ${mem}MB (建议至少 1GB)"
-        ((warnings++))
+        warnings=$((warnings+1))
     fi
     
     # 显示总结

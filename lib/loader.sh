@@ -65,7 +65,7 @@ discover_modules() {
                 --depends-on "$depends" \
                 --file "$module_file"
             
-            ((count++))
+            count=$((count+1))
         done
     done
     

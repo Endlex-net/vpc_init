@@ -79,6 +79,12 @@ register_module() {
         return 1
     fi
     
+    # 检查是否已注册，防止重复
+    if [[ -n "${MODULE_REGISTRY[$name]:-}" ]]; then
+        log "DEBUG" "模块已注册，跳过: $name"
+        return 0
+    fi
+    
     # 如果未指定文件，自动推断
     if [[ -z "$file" ]]; then
         file=$(find_module_file "$name")
@@ -278,7 +284,7 @@ load_modules_by_category() {
     for name in "${!MODULE_CATEGORIES[@]}"; do
         if [[ "${MODULE_CATEGORIES[$name]}" == "$category" ]]; then
             load_module "$name" || return 1
-            ((count++))
+            count=$((count+1))
         fi
     done
     
