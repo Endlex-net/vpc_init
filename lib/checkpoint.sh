@@ -5,8 +5,8 @@
 # 整合自 checkpoint.sh
 ################################################################################
 
-# 断点目录
-CHECKPOINT_DIR="${CHECKPOINT_DIR:-${VPC_INIT_ROOT}/.checkpoint}"
+# 断点目录 - 延迟初始化，在 init_checkpoint 中设置
+CHECKPOINT_DIR=""
 CURRENT_STATE_FILE=""
 
 ################################################################################
@@ -15,10 +15,25 @@ CURRENT_STATE_FILE=""
 
 # 初始化断点系统
 init_checkpoint() {
-    mkdir -p "${CHECKPOINT_DIR}" 2>/dev/null || true
+    # 如果 CHECKPOINT_DIR 未设置，使用默认值
+    if [[ -z "${CHECKPOINT_DIR:-}" ]]; then
+        CHECKPOINT_DIR="${VPC_INIT_ROOT}/.checkpoint"
+    fi
+    
+    # 创建目录
+    if ! mkdir -p "${CHECKPOINT_DIR}" 2>/dev/null; then
+        log "ERROR" "无法创建检查点目录: $CHECKPOINT_DIR"
+        return 1
+    fi
+    
+    # 验证目录创建成功
+    if [[ ! -d "${CHECKPOINT_DIR}" ]]; then
+        log "ERROR" "检查点目录创建失败: $CHECKPOINT_DIR"
+        return 1
+    fi
     
     # 清理旧断点（7天前）
-    find "${CHECKPOINT_DIR}" -name "*.state" -mtime +7 -delete 2>/dev/null || true
+    find "${CHECKPOINT_DIR}" -maxdepth 1 -name "*.state" -mtime +7 -delete 2>/dev/null || true
     
     log "DEBUG" "断点系统初始化完成: $CHECKPOINT_DIR"
 }
@@ -60,35 +75,50 @@ is_checkpoint_done() {
 
 # 检查并从断点恢复
 check_resume() {
-    local latest_state=$(find "${CHECKPOINT_DIR}" -name "*.state" -type f -print0 2>/dev/null | \
-        xargs -0 ls -t 2>/dev/null | head -1)
-    
-    if [[ -n "$latest_state" ]]; then
-        echo ""
-        print_warning "发现之前的执行状态"
-        print_info "状态文件: $(basename $latest_state)"
-        echo ""
-        
-        # 显示已完成的步骤
-        print_info "已完成的步骤:"
-        grep "COMPLETED" "$latest_state" 2>/dev/null | while IFS='|' read -r name timestamp desc status; do
-            echo "  ✓ $name"
-        done
-        echo ""
-        
-        if confirm "是否从断点继续执行?" "Y"; then
-            CURRENT_STATE_FILE="$latest_state"
-            log "INFO" "从断点恢复: $latest_state"
-            return 0
-        else
-            # 创建新的状态文件
-            CURRENT_STATE_FILE=""
-            log "INFO" "开始新的执行"
-            return 1
-        fi
+    # 确保检查点目录存在
+    if [[ ! -d "${CHECKPOINT_DIR}" ]]; then
+        log "DEBUG" "检查点目录不存在，跳过恢复检查"
+        return 1
     fi
     
-    return 1
+    # 查找最新的状态文件
+    local latest_state=$(find "${CHECKPOINT_DIR}" -maxdepth 1 -name "*.state" -type f -print0 2>/dev/null | \
+        xargs -0 ls -t 2>/dev/null | head -1)
+    
+    # 验证找到的文件
+    if [[ -z "$latest_state" ]] || [[ ! -f "$latest_state" ]]; then
+        log "DEBUG" "没有找到有效的状态文件"
+        return 1
+    fi
+    
+    # 确保文件在正确的目录中
+    if [[ "$(dirname "$latest_state")" != "$CHECKPOINT_DIR" ]]; then
+        log "WARN" "状态文件路径异常: $latest_state"
+        return 1
+    fi
+    
+    echo ""
+    print_warning "发现之前的执行状态"
+    print_info "状态文件: $(basename $latest_state)"
+    echo ""
+    
+    # 显示已完成的步骤
+    print_info "已完成的步骤:"
+    grep "COMPLETED" "$latest_state" 2>/dev/null | while IFS='|' read -r name timestamp desc status; do
+        echo "  ✓ $name"
+    done
+    echo ""
+    
+    if confirm "是否从断点继续执行?" "Y"; then
+        CURRENT_STATE_FILE="$latest_state"
+        log "INFO" "从断点恢复: $latest_state"
+        return 0
+    else
+        # 创建新的状态文件
+        CURRENT_STATE_FILE=""
+        log "INFO" "开始新的执行"
+        return 1
+    fi
 }
 
 # 执行模块（带断点）
