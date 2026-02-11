@@ -75,6 +75,12 @@ is_checkpoint_done() {
 
 # 检查并从断点恢复
 check_resume() {
+    # 确保 CHECKPOINT_DIR 已设置
+    if [[ -z "${CHECKPOINT_DIR:-}" ]]; then
+        log "DEBUG" "CHECKPOINT_DIR 未设置，跳过恢复检查"
+        return 1
+    fi
+    
     # 确保检查点目录存在
     if [[ ! -d "${CHECKPOINT_DIR}" ]]; then
         log "DEBUG" "检查点目录不存在，跳过恢复检查"
