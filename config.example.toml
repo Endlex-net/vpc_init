@@ -1,0 +1,144 @@
+# Ubuntu 服务器初始化配置文件
+# 此文件为配置示例，复制为 config.toml 后根据需要进行修改
+
+[basic]
+# 要创建的用户名
+username = "endlex"
+
+# 系统时区
+timezone = "Asia/Shanghai"
+
+# Swap 大小（仅在 enable_swap 为 true 时生效）
+swap_size = "2G"
+
+[ssh]
+# SSH 公钥列表，可以是文件路径或公钥字符串，多个用逗号分隔
+# 示例:
+# keys = "/home/user/.ssh/id_rsa.pub,ssh-rsa AAAAB3NzaC1..."
+keys = ""
+
+[features]
+# 是否启用各项功能: true = 启用, false = 禁用
+
+# 启用 Swap
+enable_swap = true
+
+# 启用安全加固
+enable_security = true
+
+# 启用系统限制配置
+enable_limits = true
+
+# 安装 Docker
+enable_docker = false
+
+# 安装并配置 Nginx
+enable_nginx = false
+
+# 启用 BBR (TCP 拥塞控制算法)
+enable_bbr = true
+
+# 安装 Powerlevel10k (zsh 主题)
+enable_p10k = true
+
+[nginx]
+# Nginx 站点配置
+# 仅在 enable_nginx = true 时生效
+
+# 主域名
+domain = "example.com"
+
+# 是否启用 SSL (自动申请 Let's Encrypt 证书)
+enable_ssl = true
+
+# 是否配置反向代理
+# 如果设置，Nginx 将作为反向代理服务器
+# 例如: "http://localhost:3000" 或 "http://127.0.0.1:8080"
+# 如果为空，将配置为静态站点
+proxy_pass = ""
+
+# 静态文件根目录（仅在 proxy_pass 为空时生效）
+# 默认: /var/www/{domain}
+# root = "/var/www/html"
+
+# 是否启用 www 子域名
+enable_www = true
+
+[packages]
+# 额外的 APT 软件包，用逗号分隔
+# 这些软件包将在初始化时自动安装
+additional = "curl,wget,git,build-essential,htop,net-tools,vim,nano,openssh-server"
+
+################################################################################
+# 使用说明
+################################################################################
+#
+# 1. 复制此文件: cp config.example.toml config.toml
+#
+# 2. 编辑 config.toml，根据需要修改配置
+#
+# 3. 运行初始化:
+#    sudo bash setup.sh
+#    然后选择选项 1 "全部自动初始化"
+#
+# 或者使用配置文件直接运行:
+#    sudo bash setup.sh
+#
+# 4. 配置文件优先级:
+#    - 命令行参数 > 配置文件 > 默认值
+#    - 如果配置文件不存在，将使用默认配置
+#
+################################################################################
+# 配置示例
+################################################################################
+#
+# 示例 1: Web 服务器配置 (Nginx + SSL)
+# [basic]
+# username = "webuser"
+# timezone = "Asia/Shanghai"
+# swap_size = "4G"
+#
+# [features]
+# enable_swap = true
+# enable_security = true
+# enable_docker = false
+# enable_nginx = true
+# enable_bbr = true
+#
+# [nginx]
+# domain = "mywebsite.com"
+# enable_ssl = true
+# proxy_pass = ""
+#
+# -----------------------------------------------------
+#
+# 示例 2: 应用服务器配置 (反向代理)
+# [basic]
+# username = "appuser"
+# timezone = "Asia/Shanghai"
+# swap_size = "2G"
+#
+# [features]
+# enable_swap = true
+# enable_nginx = true
+# enable_docker = true
+#
+# [nginx]
+# domain = "api.example.com"
+# enable_ssl = true
+# proxy_pass = "http://localhost:3000"
+#
+# -----------------------------------------------------
+#
+# 示例 3: 最小化配置
+# [basic]
+# username = "user"
+# timezone = "Asia/Shanghai"
+#
+# [features]
+# enable_swap = false
+# enable_security = true
+# enable_nginx = false
+# enable_docker = false
+#
+################################################################################
