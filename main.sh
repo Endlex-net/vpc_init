@@ -272,6 +272,9 @@ EOF
 ################################################################################
 
 parse_args() {
+    COMMAND=""
+    COMMAND_ARGS=()
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -c|--config)
@@ -295,18 +298,19 @@ parse_args() {
                 exit 0
                 ;;
             init|modules|install|config)
-                COMMAND="$1"
+                if [[ -z "$COMMAND" ]]; then
+                    COMMAND="$1"
+                else
+                    COMMAND_ARGS+=("$1")
+                fi
                 shift
-                break
                 ;;
             *)
-                error_exit "未知选项: $1"
+                COMMAND_ARGS+=("$1")
+                shift
                 ;;
         esac
     done
-    
-    # 剩余参数传递给子命令
-    COMMAND_ARGS=("$@")
 }
 
 ################################################################################
