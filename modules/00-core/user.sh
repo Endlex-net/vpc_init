@@ -47,6 +47,9 @@ user_execute() {
         error_exit "设置密码失败"
     }
     
+    # 配置 sudo 权限
+    setup_sudo
+
     # 保存凭证
     local creds_file="/root/${USER_NAME}-credentials.txt"
     cat > "${creds_file}" << EOF
@@ -68,6 +71,31 @@ EOF
     print_info "凭证已保存到: ${creds_file}"
     
     return 0
+}
+
+# 配置 sudo 权限
+setup_sudo() {
+    print_status "配置 sudo 权限..."
+
+    if ! command -v visudo &>/dev/null; then
+        error_exit "未找到 visudo，无法配置 sudo 权限"
+    fi
+
+    local sudoers_file="/etc/sudoers.d/${USER_NAME}"
+    cat > "${sudoers_file}" << EOF
+# 允许 ${USER_NAME} 无需密码运行所有命令
+${USER_NAME} ALL=(ALL) NOPASSWD:ALL
+EOF
+
+    chmod 440 "${sudoers_file}" || error_exit "设置 sudoers 权限失败"
+
+    if ! visudo -cf "${sudoers_file}" &>/dev/null; then
+        rm -f "${sudoers_file}"
+        error_exit "sudoers 配置语法错误"
+    fi
+
+    log "INFO" "已配置 sudo 权限: ${USER_NAME}"
+    print_success "sudo 权限配置完成"
 }
 
 # 配置函数（用于从配置文件读取）
