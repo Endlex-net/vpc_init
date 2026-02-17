@@ -231,47 +231,31 @@ execute_modules_from_config() {
 # 交互式选择要执行的模块
 select_modules_interactive() {
     print_header "模块选择"
-    
-    local selected_modules=()
-    
+
     # 按分类显示模块
     local categories=($(list_categories))
-    
+
     for category in "${categories[@]}"; do
         echo ""
         print_info "[$category]"
-        
+
         # 获取该分类的所有模块
         for name in "${!MODULE_CATEGORIES[@]}"; do
             if [[ "${MODULE_CATEGORIES[$name]}" == "$category" ]]; then
                 local description="${MODULE_DESCRIPTIONS[$name]}"
-                
+
                 if confirm "是否执行 '$name' - $description?" "Y"; then
-                    selected_modules+=("$name")
+                    execute_module "$name" || {
+                        log_error "模块执行失败: $name"
+                        if ! confirm "是否继续?" "Y"; then
+                            return 1
+                        fi
+                    }
                 fi
             fi
         done
     done
-    
-    echo ""
-    if [[ ${#selected_modules[@]} -eq 0 ]]; then
-        print_warning "未选择任何模块"
-        return 1
-    fi
-    
-    print_info "已选择模块: ${selected_modules[*]}"
-    
-    if confirm "确认执行这些模块?" "Y"; then
-        for module in "${selected_modules[@]}"; do
-            execute_module "$module" || {
-                log_error "模块执行失败: $module"
-                if ! confirm "是否继续?" "Y"; then
-                    return 1
-                fi
-            }
-        done
-    fi
-    
+
     return 0
 }
 
