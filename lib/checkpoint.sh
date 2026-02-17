@@ -60,9 +60,9 @@ is_checkpoint_done() {
     local name="$1"
     
     if [[ -z "$CURRENT_STATE_FILE" ]]; then
-        # 查找最新的状态文件
-        CURRENT_STATE_FILE=$(find "${CHECKPOINT_DIR}" -name "*.state" -type f -print0 2>/dev/null | \
-            xargs -0 ls -t 2>/dev/null | head -1)
+        # 查找最新的状态文件（避免空输入触发 ls）
+        CURRENT_STATE_FILE=$(find "${CHECKPOINT_DIR}" -maxdepth 1 -name "*.state" -type f -printf "%T@ %p\n" 2>/dev/null | \
+            sort -nr | head -1 | awk '{print $2}')
     fi
     
     if [[ -n "$CURRENT_STATE_FILE" && -f "$CURRENT_STATE_FILE" ]]; then
@@ -87,9 +87,9 @@ check_resume() {
         return 1
     fi
     
-    # 查找最新的状态文件
-    local latest_state=$(find "${CHECKPOINT_DIR}" -maxdepth 1 -name "*.state" -type f -print0 2>/dev/null | \
-        xargs -0 ls -t 2>/dev/null | head -1)
+    # 查找最新的状态文件（避免空输入触发 ls）
+    local latest_state=$(find "${CHECKPOINT_DIR}" -maxdepth 1 -name "*.state" -type f -printf "%T@ %p\n" 2>/dev/null | \
+        sort -nr | head -1 | awk '{print $2}')
     
     # 验证找到的文件
     if [[ -z "$latest_state" ]] || [[ ! -f "$latest_state" ]]; then

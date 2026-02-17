@@ -138,8 +138,8 @@ cmd_init() {
     init_checkpoint
     log "INFO" "开始初始化流程"
     
-    # 检查是否从断点恢复
-    check_resume
+    # 检查是否从断点恢复（无状态文件时返回非零，不能中断脚本）
+    check_resume || true
     
     # 初始化模块系统
     initialize_modules
