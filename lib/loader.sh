@@ -367,6 +367,7 @@ interactive_set_basic() {
         SSH_KEYS="$input"
     fi
 
+    BASIC_CONFIGURED=true
     print_success "基础参数已更新"
 }
 
@@ -389,6 +390,7 @@ interactive_set_nginx() {
         NGINX_BACKEND="$input"
     fi
 
+    NGINX_CONFIGURED=true
     print_success "Nginx 参数已更新"
 }
 
@@ -409,6 +411,7 @@ interactive_set_swap() {
         print_warning "Swap 格式无效。支持单位: G, M, K"
     done
 
+    SWAP_CONFIGURED=true
     print_success "Swap 参数已更新"
 }
 
@@ -481,11 +484,69 @@ interactive_execute_selected() {
 
     for module in "${exec_set[@]}"; do
         print_header "执行功能: $module"
+        show_module_summary "$module"
+        if ! confirm "确认执行该功能?" "Y"; then
+            print_warning "已跳过: $module"
+            continue
+        fi
+
         if ! execute_module "$module"; then
             log_error "模块执行失败: $module"
             confirm "是否继续?" "Y" || return 1
         fi
     done
+}
+
+show_module_summary() {
+    local module="$1"
+    case "$module" in
+        user)
+            print_info "用户: ${USER_NAME:-endlex}"
+            ;;
+        system)
+            print_info "时区: ${TIMEZONE:-Asia/Shanghai}"
+            ;;
+        ssh)
+            if [[ -n "${SSH_KEYS:-}" ]]; then
+                print_info "SSH 公钥: 已设置"
+            else
+                print_warning "SSH 公钥: 未设置"
+            fi
+            ;;
+        firewall)
+            print_info "默认开放: 22/tcp"
+            if [[ "${NGINX_DOMAIN:-}" != "" ]]; then
+                print_info "将开放: 80/tcp, 443/tcp"
+            fi
+            ;;
+        nginx)
+            print_info "域名: ${NGINX_DOMAIN:-未设置}"
+            print_info "SSL: ${NGINX_ENABLE_SSL:-false}"
+            if [[ -n "${NGINX_BACKEND:-}" ]]; then
+                print_info "反向代理: ${NGINX_BACKEND}"
+            else
+                print_info "站点类型: 静态"
+            fi
+            ;;
+        swap)
+            print_info "Swap 大小: ${SWAP_SIZE:-2G}"
+            ;;
+        docker)
+            print_info "安装 Docker CE + Compose"
+            ;;
+        security)
+            print_info "安全加固: 禁用 root 登录/空密码/限制尝试/防火墙默认策略"
+            ;;
+        p10k)
+            print_info "安装 Oh My Zsh + Powerlevel10k"
+            ;;
+        fix-dpkg)
+            print_warning "将修复 dpkg 状态并更新包列表"
+            ;;
+        verify)
+            print_info "执行系统环境检查"
+            ;;
+    esac
 }
 
 ################################################################################

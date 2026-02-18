@@ -34,6 +34,10 @@ system_check() {
 # 执行函数
 system_execute() {
     print_header "系统基础配置"
+
+    if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        print_info "时区: ${TIMEZONE:-Asia/Shanghai}"
+    fi
     
     # 更新系统
     update_system

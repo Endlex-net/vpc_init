@@ -26,6 +26,18 @@ ssh_check() {
 # 执行函数
 ssh_execute() {
     print_header "SSH 配置"
+
+    if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        if [[ -n "${SSH_KEYS:-}" ]]; then
+            print_info "SSH 公钥: 已设置"
+        else
+            print_warning "SSH 公钥: 未设置"
+        fi
+        if ! confirm "确认继续配置 SSH?" "Y"; then
+            print_warning "已取消 SSH 配置"
+            return 0
+        fi
+    fi
     
     local ssh_dir="/home/${USER_NAME}/.ssh"
     local auth_keys="${ssh_dir}/authorized_keys"

@@ -21,6 +21,13 @@ firewall_check() {
 # 执行函数
 firewall_execute() {
     print_header "防火墙配置"
+
+    if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        if ! confirm "确认配置防火墙?" "Y"; then
+            print_warning "已取消防火墙配置"
+            return 0
+        fi
+    fi
     
     # 安装 UFW（如未安装）
     install_ufw

@@ -22,6 +22,14 @@ p10k_check() {
 # 执行函数
 p10k_execute() {
     print_header "Powerlevel10k 安装"
+
+    if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        print_info "将安装 zsh、Oh My Zsh 和 Powerlevel10k"
+        if ! confirm "确认继续安装?" "Y"; then
+            print_warning "已取消安装"
+            return 0
+        fi
+    fi
     
     # 检查用户
     if ! id "$USER_NAME" &>/dev/null; then

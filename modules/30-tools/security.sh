@@ -18,6 +18,21 @@ security_check() {
 # 执行函数
 security_execute() {
     print_header "安全加固"
+
+    print_info "将执行以下加固项目:"
+    echo "  • 禁用 root SSH 登录"
+    echo "  • 禁用空密码登录"
+    echo "  • 限制 SSH 认证尝试次数"
+    echo "  • 禁用不必要的服务"
+    echo "  • 配置系统限制"
+    echo "  • 设置防火墙默认策略"
+
+    if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        if ! confirm "确认执行安全加固?" "Y"; then
+            print_warning "已取消安全加固"
+            return 0
+        fi
+    fi
     
     # SSH 安全加固
     harden_ssh

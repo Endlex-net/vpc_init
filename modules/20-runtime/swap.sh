@@ -12,6 +12,7 @@
 
 # Swap 大小
 SWAP_SIZE="${SWAP_SIZE:-2G}"
+SWAP_SIZE_CONFIGURED="${SWAP_SIZE_CONFIGURED:-false}"
 SWAP_FILE="/swapfile"
 
 # 检查函数
@@ -36,7 +37,16 @@ swap_execute() {
 
     # 交互式模式下询问大小
     if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
-        prompt_swap_size
+        if [[ "${SWAP_SIZE_CONFIGURED}" != "true" ]]; then
+            prompt_swap_size
+        else
+            print_info "已设置 Swap 大小: ${SWAP_SIZE}"
+        fi
+
+        if ! confirm "确认创建 Swap (${SWAP_SIZE})?" "Y"; then
+            print_warning "已取消 Swap 配置"
+            return 0
+        fi
     fi
     
     print_status "创建 ${SWAP_SIZE} 的 Swap 文件..."
@@ -76,11 +86,13 @@ prompt_swap_size() {
         read -p "请输入 Swap 大小 (默认 2G): " -r input
         if [[ -z "$input" ]]; then
             SWAP_SIZE="2G"
+            SWAP_SIZE_CONFIGURED=true
             break
         fi
 
         if validate_swap_size "$input"; then
             SWAP_SIZE="$input"
+            SWAP_SIZE_CONFIGURED=true
             break
         fi
 

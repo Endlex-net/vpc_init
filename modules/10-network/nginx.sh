@@ -28,6 +28,20 @@ nginx_check() {
 # 执行函数
 nginx_execute() {
     print_header "Nginx 安装和配置"
+
+    if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        print_info "域名: ${NGINX_DOMAIN:-未设置}"
+        print_info "SSL: ${NGINX_ENABLE_SSL:-false}"
+        if [[ -n "${NGINX_BACKEND:-}" ]]; then
+            print_info "反向代理: ${NGINX_BACKEND}"
+        else
+            print_info "站点类型: 静态"
+        fi
+        if ! confirm "确认继续配置 Nginx?" "Y"; then
+            print_warning "已取消 Nginx 配置"
+            return 0
+        fi
+    fi
     
     # 安装 Nginx
     install_nginx

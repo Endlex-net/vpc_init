@@ -22,6 +22,14 @@ docker_check() {
 # 执行函数
 docker_execute() {
     print_header "Docker 安装"
+
+    if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        print_info "将安装 Docker CE + Docker Compose"
+        if ! confirm "确认继续安装 Docker?" "Y"; then
+            print_warning "已取消 Docker 安装"
+            return 0
+        fi
+    fi
     
     # 安装依赖
     install_prerequisites
