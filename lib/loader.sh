@@ -228,39 +228,101 @@ execute_modules_from_config() {
 # 交互式模块选择
 ################################################################################
 
-# 交互式选择要执行的模块（主页菜单 + 参数设置 + 执行模块）
+# 交互式选择要执行的模块（一次选择多个 -> 配置 -> 执行）
 select_modules_interactive() {
-    while true; do
-        print_header "交互式功能菜单"
-        echo "  1) 设置基础参数（用户名/时区/SSH）"
-        echo "  2) 设置 Nginx 参数（域名/SSL/反代）"
-        echo "  3) 设置 Swap 参数"
-        echo "  4) 选择并执行模块"
-        echo "  0) 返回/退出"
-        echo ""
+    print_header "交互式功能菜单"
 
-        read -p "请选择: " -r choice
-        case "$choice" in
-            1)
-                interactive_set_basic
-                ;;
-            2)
-                interactive_set_nginx
-                ;;
-            3)
-                interactive_set_swap
-                ;;
-            4)
-                interactive_execute_module
-                ;;
-            0)
-                return 0
-                ;;
-            *)
-                print_warning "无效选项"
-                ;;
-        esac
+    # 构建菜单
+    local options=()
+    local labels=()
+    local index=1
+
+    local categories=($(list_categories))
+    for category in "${categories[@]}"; do
+        options+=("__category:${category}")
+        labels+=("[${category}]")
+
+        for name in "${!MODULE_CATEGORIES[@]}"; do
+            if [[ "${MODULE_CATEGORIES[$name]}" == "$category" ]]; then
+                local description="${MODULE_DESCRIPTIONS[$name]}"
+                options+=("${name}")
+                labels+=("  ${name} - ${description}")
+            fi
+        done
     done
+
+    echo "请选择要执行的功能（多个用逗号分隔，例如 1,2,3）:"
+    for i in "${!options[@]}"; do
+        local opt="${options[$i]}"
+        if [[ "$opt" == __category:* ]]; then
+            echo ""
+            print_info "${labels[$i]}"
+        else
+            echo "  $index) ${labels[$i]}"
+            index=$((index+1))
+        fi
+    done
+    echo ""
+    echo "  0) 返回/退出"
+    echo ""
+
+    read -p "请输入选择: " -r choice
+    if [[ "$choice" == "0" ]]; then
+        return 0
+    fi
+    if [[ -z "$choice" ]]; then
+        print_warning "未输入任何选项"
+        return 1
+    fi
+
+    # 解析选择
+    local selected_modules=()
+    IFS=',' read -ra CHOICES <<< "$choice"
+    for item in "${CHOICES[@]}"; do
+        item=$(echo "$item" | xargs)
+        if [[ -z "$item" || ! "$item" =~ ^[0-9]+$ ]]; then
+            print_warning "无效选项: $item"
+            return 1
+        fi
+
+        if [[ "$item" == "0" ]]; then
+            return 0
+        fi
+
+        local current=1
+        local selected=""
+        for i in "${!options[@]}"; do
+            local opt="${options[$i]}"
+            if [[ "$opt" == __category:* ]]; then
+                continue
+            fi
+            if [[ $current -eq $item ]]; then
+                selected="$opt"
+                break
+            fi
+            current=$((current+1))
+        done
+
+        if [[ -z "$selected" ]]; then
+            print_warning "未找到对应的功能选项: $item"
+            return 1
+        fi
+
+        selected_modules+=("$selected")
+    done
+
+    if [[ ${#selected_modules[@]} -eq 0 ]]; then
+        print_warning "未选择任何模块"
+        return 1
+    fi
+
+    # 基于选择引导配置
+    interactive_prompt_for_selected "${selected_modules[@]}"
+
+    # 执行选择的模块（按依赖顺序）
+    interactive_execute_selected "${selected_modules[@]}"
+
+    return 0
 }
 
 interactive_set_basic() {
@@ -350,79 +412,80 @@ interactive_set_swap() {
     print_success "Swap 参数已更新"
 }
 
-interactive_execute_module() {
-    print_header "选择并执行模块"
+interactive_prompt_for_selected() {
+    local selected_modules=("$@")
 
-    # 构建菜单
-    local options=()
-    local labels=()
-    local index=1
+    if has_selected_module "user" "${selected_modules[@]}" || \
+       has_selected_module "ssh" "${selected_modules[@]}" || \
+       has_selected_module "system" "${selected_modules[@]}"; then
+        interactive_set_basic
+    fi
 
-    local categories=($(list_categories))
-    for category in "${categories[@]}"; do
-        options+=("__category:${category}")
-        labels+=("[${category}]")
+    if has_selected_module "nginx" "${selected_modules[@]}"; then
+        interactive_set_nginx
+    fi
 
-        for name in "${!MODULE_CATEGORIES[@]}"; do
-            if [[ "${MODULE_CATEGORIES[$name]}" == "$category" ]]; then
-                local description="${MODULE_DESCRIPTIONS[$name]}"
-                options+=("${name}")
-                labels+=("  ${name} - ${description}")
+    if has_selected_module "swap" "${selected_modules[@]}"; then
+        interactive_set_swap
+    fi
+}
+
+has_selected_module() {
+    local target="$1"
+    shift
+    for item in "$@"; do
+        if [[ "$item" == "$target" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+interactive_execute_selected() {
+    local selected_modules=("$@")
+
+    # 构建执行集合（包含依赖）
+    local selected_set=()
+    for module in "${selected_modules[@]}"; do
+        selected_set+=("$module")
+
+        local deps="$(get_module_depends "$module")"
+        if [[ -n "$deps" ]]; then
+            IFS=',' read -ra DEP_ARRAY <<< "$deps"
+            for dep in "${DEP_ARRAY[@]}"; do
+                dep=$(echo "$dep" | xargs)
+                if [[ -n "$dep" ]]; then
+                    selected_set+=("$dep")
+                fi
+            done
+        fi
+    done
+
+    # 统一去重并按模块加载顺序执行
+    local exec_set=()
+    local sorted_order=($(printf '%s\n' "${MODULE_LOAD_ORDER[@]}" | sort))
+    for item in "${sorted_order[@]}"; do
+        local name="${item#*:}"
+        for sel in "${selected_set[@]}"; do
+            if [[ "$name" == "$sel" ]]; then
+                exec_set+=("$name")
+                break
             fi
         done
     done
 
-    echo "请选择要执行的功能（输入编号）:"
-    for i in "${!options[@]}"; do
-        local opt="${options[$i]}"
-        if [[ "$opt" == __category:* ]]; then
-            echo ""
-            print_info "${labels[$i]}"
-        else
-            echo "  $index) ${labels[$i]}"
-            index=$((index+1))
+    print_info "即将执行模块: ${exec_set[*]}"
+    if ! confirm "确认执行?" "Y"; then
+        return 0
+    fi
+
+    for module in "${exec_set[@]}"; do
+        print_header "执行功能: $module"
+        if ! execute_module "$module"; then
+            log_error "模块执行失败: $module"
+            confirm "是否继续?" "Y" || return 1
         fi
     done
-    echo ""
-    echo "  0) 返回"
-    echo ""
-
-    read -p "请选择: " -r choice
-    if [[ "$choice" == "0" ]]; then
-        return 0
-    fi
-    if [[ -z "$choice" || ! "$choice" =~ ^[0-9]+$ ]]; then
-        print_warning "无效输入，请输入数字选项"
-        return 0
-    fi
-
-    local current=1
-    local selected=""
-    for i in "${!options[@]}"; do
-        local opt="${options[$i]}"
-        if [[ "$opt" == __category:* ]]; then
-            continue
-        fi
-        if [[ $current -eq $choice ]]; then
-            selected="$opt"
-            break
-        fi
-        current=$((current+1))
-    done
-
-    if [[ -z "$selected" ]]; then
-        print_warning "未找到对应的功能选项"
-        return 0
-    fi
-
-    print_header "执行功能: $selected"
-    if ! execute_module "$selected"; then
-        log_error "模块执行失败: $selected"
-        confirm "是否继续?" "Y" || return 1
-    fi
-
-    echo ""
-    read -p "按 Enter 返回菜单..." -r
 }
 
 ################################################################################
