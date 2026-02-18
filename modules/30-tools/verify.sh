@@ -10,6 +10,8 @@
 
 verify_execute() {
     print_header "系统环境验证"
+
+    print_info "本次将执行: 系统版本、权限、网络、磁盘、内存检查"
     
     local errors=0
     local warnings=0

@@ -24,6 +24,7 @@ docker_execute() {
     print_header "Docker 安装"
 
     if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        print_info "本次将执行: 安装 Docker CE、Compose、配置用户组"
         print_info "将安装 Docker CE + Docker Compose"
         if ! confirm "确认继续安装 Docker?" "Y"; then
             print_warning "已取消 Docker 安装"

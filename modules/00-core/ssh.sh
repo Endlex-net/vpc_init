@@ -28,6 +28,7 @@ ssh_execute() {
     print_header "SSH 配置"
 
     if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        print_info "本次将执行: 创建 SSH 目录、写入公钥、设置权限"
         if [[ -n "${SSH_KEYS:-}" ]]; then
             print_info "SSH 公钥: 已设置"
         else

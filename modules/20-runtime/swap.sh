@@ -37,6 +37,7 @@ swap_execute() {
 
     # 交互式模式下询问大小
     if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        print_info "本次将执行: 创建 swapfile、写入 fstab、优化内核参数"
         if [[ "${SWAP_SIZE_CONFIGURED}" != "true" ]]; then
             prompt_swap_size
         else

@@ -34,6 +34,7 @@ user_execute() {
     
     # 如果在交互式配置阶段已设置用户名，直接展示确认
     if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        print_info "本次将执行: 创建用户、设置密码、配置 sudo 权限"
         if [[ -n "${USER_NAME:-}" ]]; then
             print_info "将创建用户: ${USER_NAME}"
             if ! confirm "确认创建该用户?" "Y"; then

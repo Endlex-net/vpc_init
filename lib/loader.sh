@@ -325,12 +325,10 @@ select_modules_interactive() {
     return 0
 }
 
-interactive_set_basic() {
-    print_header "基础参数设置"
+interactive_set_user() {
+    print_header "用户参数设置"
 
     print_info "用户名格式: 字母/数字/下划线/连字符，最长 32 位"
-
-    # 用户名
     while true; do
         read -p "请输入用户名 (默认 ${USER_NAME:-endlex}): " -r input
         if [[ -z "$input" ]]; then
@@ -344,7 +342,13 @@ interactive_set_basic() {
         print_warning "用户名格式无效。示例: endlex, devops_01"
     done
 
-    # 时区
+    USER_CONFIGURED=true
+    print_success "用户参数已更新"
+}
+
+interactive_set_timezone() {
+    print_header "时区设置"
+
     print_info "时区示例: Asia/Shanghai, America/New_York, Europe/London"
     while true; do
         read -p "请输入时区 (默认 ${TIMEZONE:-Asia/Shanghai}): " -r input
@@ -359,7 +363,13 @@ interactive_set_basic() {
         print_warning "时区无效。请确认 /usr/share/zoneinfo/ 下存在该时区"
     done
 
-    # SSH 公钥
+    TIMEZONE_CONFIGURED=true
+    print_success "时区参数已更新"
+}
+
+interactive_set_sshkeys() {
+    print_header "SSH 参数设置"
+
     print_info "SSH 公钥格式: ssh-rsa AAAA... 或 ssh-ed25519 AAAA..."
     print_info "支持多个，用逗号分隔。也可输入公钥文件路径"
     read -p "请输入 SSH 公钥(可留空): " -r input
@@ -367,8 +377,8 @@ interactive_set_basic() {
         SSH_KEYS="$input"
     fi
 
-    BASIC_CONFIGURED=true
-    print_success "基础参数已更新"
+    SSH_CONFIGURED=true
+    print_success "SSH 参数已更新"
 }
 
 interactive_set_nginx() {
@@ -412,16 +422,23 @@ interactive_set_swap() {
     done
 
     SWAP_CONFIGURED=true
+    SWAP_SIZE_CONFIGURED=true
     print_success "Swap 参数已更新"
 }
 
 interactive_prompt_for_selected() {
     local selected_modules=("$@")
 
-    if has_selected_module "user" "${selected_modules[@]}" || \
-       has_selected_module "ssh" "${selected_modules[@]}" || \
-       has_selected_module "system" "${selected_modules[@]}"; then
-        interactive_set_basic
+    if has_selected_module "user" "${selected_modules[@]}"; then
+        interactive_set_user
+    fi
+
+    if has_selected_module "system" "${selected_modules[@]}"; then
+        interactive_set_timezone
+    fi
+
+    if has_selected_module "ssh" "${selected_modules[@]}"; then
+        interactive_set_sshkeys
     fi
 
     if has_selected_module "nginx" "${selected_modules[@]}"; then
@@ -477,8 +494,14 @@ interactive_execute_selected() {
         done
     done
 
-    print_info "即将执行模块: ${exec_set[*]}"
-    if ! confirm "确认执行?" "Y"; then
+    print_header "执行计划"
+    print_info "本次将执行以下模块:"
+    for module in "${exec_set[@]}"; do
+        echo "  - $module"
+    done
+    echo ""
+    if ! confirm "确认执行以上计划?" "Y"; then
+        print_warning "已取消本次执行"
         return 0
     fi
 
@@ -501,10 +524,18 @@ show_module_summary() {
     local module="$1"
     case "$module" in
         user)
-            print_info "用户: ${USER_NAME:-endlex}"
+            if [[ -n "${USER_NAME:-}" ]]; then
+                print_info "用户: ${USER_NAME}"
+            else
+                print_warning "用户: 未设置"
+            fi
             ;;
         system)
-            print_info "时区: ${TIMEZONE:-Asia/Shanghai}"
+            if [[ -n "${TIMEZONE:-}" ]]; then
+                print_info "时区: ${TIMEZONE}"
+            else
+                print_warning "时区: 未设置"
+            fi
             ;;
         ssh)
             if [[ -n "${SSH_KEYS:-}" ]]; then

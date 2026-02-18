@@ -10,7 +10,8 @@
 
 fix_dpkg_execute() {
     print_header "修复 dpkg 错误"
-    
+
+    print_info "本次将执行: 清理 dpkg 状态、修复依赖、更新包列表"
     print_warning "此操作将修复常见的 dpkg 错误"
     
     if ! confirm "确认继续?" "Y"; then

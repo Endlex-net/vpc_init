@@ -30,6 +30,7 @@ nginx_execute() {
     print_header "Nginx 安装和配置"
 
     if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        print_info "本次将执行: 安装 Nginx、配置站点、可选 SSL/反代"
         print_info "域名: ${NGINX_DOMAIN:-未设置}"
         print_info "SSL: ${NGINX_ENABLE_SSL:-false}"
         if [[ -n "${NGINX_BACKEND:-}" ]]; then
