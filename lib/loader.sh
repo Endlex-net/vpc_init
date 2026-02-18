@@ -228,90 +228,201 @@ execute_modules_from_config() {
 # 交互式模块选择
 ################################################################################
 
-# 交互式选择要执行的模块（一次执行一个，完成后回到主页）
+# 交互式选择要执行的模块（主页菜单 + 参数设置 + 执行模块）
 select_modules_interactive() {
     while true; do
         print_header "交互式功能菜单"
-
-        # 构建菜单
-        local options=()
-        local labels=()
-        local index=1
-
-        local categories=($(list_categories))
-        for category in "${categories[@]}"; do
-            options+=("__category:${category}")
-            labels+=("[${category}]")
-
-            for name in "${!MODULE_CATEGORIES[@]}"; do
-                if [[ "${MODULE_CATEGORIES[$name]}" == "$category" ]]; then
-                    local description="${MODULE_DESCRIPTIONS[$name]}"
-                    options+=("${name}")
-                    labels+=("  ${name} - ${description}")
-                fi
-            done
-        done
-
-        # 显示菜单
-        echo "请选择要执行的功能（输入编号）:"
-        for i in "${!options[@]}"; do
-            local opt="${options[$i]}"
-            if [[ "$opt" == __category:* ]]; then
-                echo ""
-                print_info "${labels[$i]}"
-            else
-                echo "  $index) ${labels[$i]}"
-                index=$((index+1))
-            fi
-        done
-        echo ""
+        echo "  1) 设置基础参数（用户名/时区/SSH）"
+        echo "  2) 设置 Nginx 参数（域名/SSL/反代）"
+        echo "  3) 设置 Swap 参数"
+        echo "  4) 选择并执行模块"
         echo "  0) 返回/退出"
         echo ""
 
-        # 读取输入
         read -p "请选择: " -r choice
-
-        if [[ "$choice" == "0" ]]; then
-            return 0
-        fi
-
-        if [[ -z "$choice" || ! "$choice" =~ ^[0-9]+$ ]]; then
-            print_warning "无效输入，请输入数字选项"
-            continue
-        fi
-
-        # 将用户输入映射到模块
-        local current=1
-        local selected=""
-        for i in "${!options[@]}"; do
-            local opt="${options[$i]}"
-            if [[ "$opt" == __category:* ]]; then
-                continue
-            fi
-            if [[ $current -eq $choice ]]; then
-                selected="$opt"
-                break
-            fi
-            current=$((current+1))
-        done
-
-        if [[ -z "$selected" ]]; then
-            print_warning "未找到对应的功能选项"
-            continue
-        fi
-
-        # 执行模块
-        print_header "执行功能: $selected"
-        if ! execute_module "$selected"; then
-            log_error "模块执行失败: $selected"
-            if ! confirm "是否继续?" "Y"; then
-                return 1
-            fi
-        fi
-
-        echo ""
-        read -p "按 Enter 返回菜单..." -r
+        case "$choice" in
+            1)
+                interactive_set_basic
+                ;;
+            2)
+                interactive_set_nginx
+                ;;
+            3)
+                interactive_set_swap
+                ;;
+            4)
+                interactive_execute_module
+                ;;
+            0)
+                return 0
+                ;;
+            *)
+                print_warning "无效选项"
+                ;;
+        esac
     done
+}
+
+interactive_set_basic() {
+    print_header "基础参数设置"
+
+    print_info "用户名格式: 字母/数字/下划线/连字符，最长 32 位"
+
+    # 用户名
+    while true; do
+        read -p "请输入用户名 (默认 ${USER_NAME:-endlex}): " -r input
+        if [[ -z "$input" ]]; then
+            USER_NAME="${USER_NAME:-endlex}"
+            break
+        fi
+        if validate_username "$input"; then
+            USER_NAME="$input"
+            break
+        fi
+        print_warning "用户名格式无效。示例: endlex, devops_01"
+    done
+
+    # 时区
+    print_info "时区示例: Asia/Shanghai, America/New_York, Europe/London"
+    while true; do
+        read -p "请输入时区 (默认 ${TIMEZONE:-Asia/Shanghai}): " -r input
+        if [[ -z "$input" ]]; then
+            TIMEZONE="${TIMEZONE:-Asia/Shanghai}"
+            break
+        fi
+        if validate_timezone "$input"; then
+            TIMEZONE="$input"
+            break
+        fi
+        print_warning "时区无效。请确认 /usr/share/zoneinfo/ 下存在该时区"
+    done
+
+    # SSH 公钥
+    print_info "SSH 公钥格式: ssh-rsa AAAA... 或 ssh-ed25519 AAAA..."
+    print_info "支持多个，用逗号分隔。也可输入公钥文件路径"
+    read -p "请输入 SSH 公钥(可留空): " -r input
+    if [[ -n "$input" ]]; then
+        SSH_KEYS="$input"
+    fi
+
+    print_success "基础参数已更新"
+}
+
+interactive_set_nginx() {
+    print_header "Nginx 参数设置"
+
+    print_info "域名示例: example.com"
+    read -p "请输入域名 (留空表示不配置): " -r input
+    NGINX_DOMAIN="$input"
+
+    if [[ -n "$NGINX_DOMAIN" ]]; then
+        if confirm "是否启用 SSL?" "Y"; then
+            NGINX_ENABLE_SSL=true
+        else
+            NGINX_ENABLE_SSL=false
+        fi
+
+        print_info "反向代理示例: http://127.0.0.1:3000"
+        read -p "请输入反向代理地址 (留空表示静态站点): " -r input
+        NGINX_BACKEND="$input"
+    fi
+
+    print_success "Nginx 参数已更新"
+}
+
+interactive_set_swap() {
+    print_header "Swap 参数设置"
+
+    print_info "格式示例: 1G, 2G, 512M"
+    while true; do
+        read -p "请输入 Swap 大小 (默认 ${SWAP_SIZE:-2G}): " -r input
+        if [[ -z "$input" ]]; then
+            SWAP_SIZE="${SWAP_SIZE:-2G}"
+            break
+        fi
+        if validate_swap_size "$input"; then
+            SWAP_SIZE="$input"
+            break
+        fi
+        print_warning "Swap 格式无效。支持单位: G, M, K"
+    done
+
+    print_success "Swap 参数已更新"
+}
+
+interactive_execute_module() {
+    print_header "选择并执行模块"
+
+    # 构建菜单
+    local options=()
+    local labels=()
+    local index=1
+
+    local categories=($(list_categories))
+    for category in "${categories[@]}"; do
+        options+=("__category:${category}")
+        labels+=("[${category}]")
+
+        for name in "${!MODULE_CATEGORIES[@]}"; do
+            if [[ "${MODULE_CATEGORIES[$name]}" == "$category" ]]; then
+                local description="${MODULE_DESCRIPTIONS[$name]}"
+                options+=("${name}")
+                labels+=("  ${name} - ${description}")
+            fi
+        done
+    done
+
+    echo "请选择要执行的功能（输入编号）:"
+    for i in "${!options[@]}"; do
+        local opt="${options[$i]}"
+        if [[ "$opt" == __category:* ]]; then
+            echo ""
+            print_info "${labels[$i]}"
+        else
+            echo "  $index) ${labels[$i]}"
+            index=$((index+1))
+        fi
+    done
+    echo ""
+    echo "  0) 返回"
+    echo ""
+
+    read -p "请选择: " -r choice
+    if [[ "$choice" == "0" ]]; then
+        return 0
+    fi
+    if [[ -z "$choice" || ! "$choice" =~ ^[0-9]+$ ]]; then
+        print_warning "无效输入，请输入数字选项"
+        return 0
+    fi
+
+    local current=1
+    local selected=""
+    for i in "${!options[@]}"; do
+        local opt="${options[$i]}"
+        if [[ "$opt" == __category:* ]]; then
+            continue
+        fi
+        if [[ $current -eq $choice ]]; then
+            selected="$opt"
+            break
+        fi
+        current=$((current+1))
+    done
+
+    if [[ -z "$selected" ]]; then
+        print_warning "未找到对应的功能选项"
+        return 0
+    fi
+
+    print_header "执行功能: $selected"
+    if ! execute_module "$selected"; then
+        log_error "模块执行失败: $selected"
+        confirm "是否继续?" "Y" || return 1
+    fi
+
+    echo ""
+    read -p "按 Enter 返回菜单..." -r
 }
 
 ################################################################################
