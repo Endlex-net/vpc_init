@@ -228,35 +228,90 @@ execute_modules_from_config() {
 # 交互式模块选择
 ################################################################################
 
-# 交互式选择要执行的模块
+# 交互式选择要执行的模块（一次执行一个，完成后回到主页）
 select_modules_interactive() {
-    print_header "模块选择"
+    while true; do
+        print_header "交互式功能菜单"
 
-    # 按分类显示模块
-    local categories=($(list_categories))
+        # 构建菜单
+        local options=()
+        local labels=()
+        local index=1
 
-    for category in "${categories[@]}"; do
-        echo ""
-        print_info "[$category]"
+        local categories=($(list_categories))
+        for category in "${categories[@]}"; do
+            options+=("__category:${category}")
+            labels+=("[${category}]")
 
-        # 获取该分类的所有模块
-        for name in "${!MODULE_CATEGORIES[@]}"; do
-            if [[ "${MODULE_CATEGORIES[$name]}" == "$category" ]]; then
-                local description="${MODULE_DESCRIPTIONS[$name]}"
-
-                if confirm "是否执行 '$name' - $description?" "Y"; then
-                    execute_module "$name" || {
-                        log_error "模块执行失败: $name"
-                        if ! confirm "是否继续?" "Y"; then
-                            return 1
-                        fi
-                    }
+            for name in "${!MODULE_CATEGORIES[@]}"; do
+                if [[ "${MODULE_CATEGORIES[$name]}" == "$category" ]]; then
+                    local description="${MODULE_DESCRIPTIONS[$name]}"
+                    options+=("${name}")
+                    labels+=("  ${name} - ${description}")
                 fi
+            done
+        done
+
+        # 显示菜单
+        echo "请选择要执行的功能（输入编号）:"
+        for i in "${!options[@]}"; do
+            local opt="${options[$i]}"
+            if [[ "$opt" == __category:* ]]; then
+                echo ""
+                print_info "${labels[$i]}"
+            else
+                echo "  $index) ${labels[$i]}"
+                index=$((index+1))
             fi
         done
-    done
+        echo ""
+        echo "  0) 返回/退出"
+        echo ""
 
-    return 0
+        # 读取输入
+        read -p "请选择: " -r choice
+
+        if [[ "$choice" == "0" ]]; then
+            return 0
+        fi
+
+        if [[ -z "$choice" || ! "$choice" =~ ^[0-9]+$ ]]; then
+            print_warning "无效输入，请输入数字选项"
+            continue
+        fi
+
+        # 将用户输入映射到模块
+        local current=1
+        local selected=""
+        for i in "${!options[@]}"; do
+            local opt="${options[$i]}"
+            if [[ "$opt" == __category:* ]]; then
+                continue
+            fi
+            if [[ $current -eq $choice ]]; then
+                selected="$opt"
+                break
+            fi
+            current=$((current+1))
+        done
+
+        if [[ -z "$selected" ]]; then
+            print_warning "未找到对应的功能选项"
+            continue
+        fi
+
+        # 执行模块
+        print_header "执行功能: $selected"
+        if ! execute_module "$selected"; then
+            log_error "模块执行失败: $selected"
+            if ! confirm "是否继续?" "Y"; then
+                return 1
+            fi
+        fi
+
+        echo ""
+        read -p "按 Enter 返回菜单..." -r
+    done
 }
 
 ################################################################################

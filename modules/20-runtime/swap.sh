@@ -33,6 +33,11 @@ swap_check() {
 # 执行函数
 swap_execute() {
     print_header "Swap 配置"
+
+    # 交互式模式下询问大小
+    if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        prompt_swap_size
+    fi
     
     print_status "创建 ${SWAP_SIZE} 的 Swap 文件..."
     
@@ -63,6 +68,24 @@ swap_execute() {
     free -h | grep -i swap
     
     return 0
+}
+
+# 交互式设置 Swap 大小
+prompt_swap_size() {
+    while true; do
+        read -p "请输入 Swap 大小 (默认 2G): " -r input
+        if [[ -z "$input" ]]; then
+            SWAP_SIZE="2G"
+            break
+        fi
+
+        if validate_swap_size "$input"; then
+            SWAP_SIZE="$input"
+            break
+        fi
+
+        print_warning "无效格式，请使用如 1G, 2G, 512M"
+    done
 }
 
 # 注册模块
