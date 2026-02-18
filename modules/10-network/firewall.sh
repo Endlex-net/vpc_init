@@ -24,10 +24,6 @@ firewall_execute() {
 
     if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
         print_info "本次将执行: 安装 UFW、设置默认策略、开放必要端口"
-        if ! confirm "确认配置防火墙?" "Y"; then
-            print_warning "已取消防火墙配置"
-            return 0
-        fi
     fi
     
     # 安装 UFW（如未安装）

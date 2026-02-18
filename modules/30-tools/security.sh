@@ -27,12 +27,7 @@ security_execute() {
     echo "  • 配置系统限制"
     echo "  • 设置防火墙默认策略"
 
-    if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
-        if ! confirm "确认执行安全加固?" "Y"; then
-            print_warning "已取消安全加固"
-            return 0
-        fi
-    fi
+    # 交互确认已在执行计划阶段统一处理
     
     # SSH 安全加固
     harden_ssh

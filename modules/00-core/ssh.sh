@@ -34,10 +34,6 @@ ssh_execute() {
         else
             print_warning "SSH 公钥: 未设置"
         fi
-        if ! confirm "确认继续配置 SSH?" "Y"; then
-            print_warning "已取消 SSH 配置"
-            return 0
-        fi
     fi
     
     local ssh_dir="/home/${USER_NAME}/.ssh"

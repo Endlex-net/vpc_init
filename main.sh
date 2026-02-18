@@ -220,6 +220,18 @@ cmd_install() {
     if ! is_module_registered "$module_name"; then
         error_exit "模块不存在: $module_name"
     fi
+
+    # 交互模式下确认执行
+    if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
+        print_header "执行功能: $module_name"
+        if declare -f show_module_summary &>/dev/null; then
+            show_module_summary "$module_name"
+        fi
+        if ! confirm "确认执行该功能?" "Y"; then
+            print_warning "已取消: $module_name"
+            return 0
+        fi
+    fi
     
     # 执行模块
     if execute_module "$module_name"; then

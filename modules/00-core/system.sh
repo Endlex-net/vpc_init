@@ -38,10 +38,6 @@ system_execute() {
     if [[ "${INTERACTIVE_MODE:-false}" == "true" ]]; then
         print_info "本次将执行: 更新软件包列表、安装基础依赖、配置时区"
         print_info "时区: ${TIMEZONE:-Asia/Shanghai}"
-        if ! confirm "确认继续执行 system?" "Y"; then
-            print_warning "已取消 system 执行"
-            return 0
-        fi
     fi
     
     # 更新系统

@@ -38,10 +38,6 @@ nginx_execute() {
         else
             print_info "站点类型: 静态"
         fi
-        if ! confirm "确认继续配置 Nginx?" "Y"; then
-            print_warning "已取消 Nginx 配置"
-            return 0
-        fi
     fi
     
     # 安装 Nginx

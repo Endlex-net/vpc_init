@@ -14,9 +14,7 @@ fix_dpkg_execute() {
     print_info "本次将执行: 清理 dpkg 状态、修复依赖、更新包列表"
     print_warning "此操作将修复常见的 dpkg 错误"
     
-    if ! confirm "确认继续?" "Y"; then
-        return 0
-    fi
+    # 交互确认已在执行计划阶段统一处理
     
     # 步骤 1: 清理损坏的状态文件
     print_status "步骤 1/5: 清理损坏的状态文件..."

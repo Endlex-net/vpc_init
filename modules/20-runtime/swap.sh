@@ -43,11 +43,6 @@ swap_execute() {
         else
             print_info "已设置 Swap 大小: ${SWAP_SIZE}"
         fi
-
-        if ! confirm "确认创建 Swap (${SWAP_SIZE})?" "Y"; then
-            print_warning "已取消 Swap 配置"
-            return 0
-        fi
     fi
     
     print_status "创建 ${SWAP_SIZE} 的 Swap 文件..."
